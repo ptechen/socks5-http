@@ -1,9 +1,6 @@
-#[cfg(feature = "tokio")]
-use crate::protocol::AsyncStreamOperation;
-use crate::protocol::{Address, StreamOperation};
-#[cfg(feature = "tokio")]
-use async_trait::async_trait;
-#[cfg(feature = "tokio")]
+use crate::StreamOperation;
+use crate::{Address, AsyncStreamOperation};
+use error::Result;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 /// SOCKS5 UDP packet header
@@ -32,7 +29,7 @@ impl UdpHeader {
 }
 
 impl StreamOperation for UdpHeader {
-    fn retrieve_from_stream<R: std::io::Read>(stream: &mut R) -> std::io::Result<Self> {
+    fn retrieve_from_stream<R: std::io::Read>(stream: &mut R) -> Result<Self> {
         let mut buf = [0; 3];
         stream.read_exact(&mut buf)?;
 
@@ -53,10 +50,8 @@ impl StreamOperation for UdpHeader {
     }
 }
 
-#[cfg(feature = "tokio")]
-#[async_trait]
 impl AsyncStreamOperation for UdpHeader {
-    async fn retrieve_from_async_stream<R>(r: &mut R) -> std::io::Result<Self>
+    async fn retrieve_from_async_stream<R>(r: &mut R) -> Result<Self>
     where
         R: AsyncRead + Unpin + Send + ?Sized,
     {

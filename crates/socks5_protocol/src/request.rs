@@ -1,9 +1,5 @@
-#[cfg(feature = "tokio")]
-use crate::protocol::AsyncStreamOperation;
-use crate::protocol::{Address, Command, StreamOperation, Version};
-#[cfg(feature = "tokio")]
-use async_trait::async_trait;
-#[cfg(feature = "tokio")]
+use crate::{Address, AsyncStreamOperation, Command, StreamOperation, Version};
+use error::{Error, Result};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 /// SOCKS5 request
@@ -28,14 +24,14 @@ impl Request {
 }
 
 impl StreamOperation for Request {
-    fn retrieve_from_stream<R: std::io::Read>(stream: &mut R) -> std::io::Result<Self> {
+    fn retrieve_from_stream<R: std::io::Read>(stream: &mut R) -> Result<Self> {
         let mut ver = [0u8; 1];
         stream.read_exact(&mut ver)?;
         let ver = Version::try_from(ver[0])?;
 
         if ver != Version::V5 {
             let err = format!("Unsupported SOCKS version {0:#x}", u8::from(ver));
-            return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, err));
+            return Err(Error::from(std::io::Error::new(std::io::ErrorKind::Unsupported, err)));
         }
 
         let mut buf = [0; 2];
@@ -59,10 +55,8 @@ impl StreamOperation for Request {
     }
 }
 
-#[cfg(feature = "tokio")]
-#[async_trait]
 impl AsyncStreamOperation for Request {
-    async fn retrieve_from_async_stream<R>(r: &mut R) -> std::io::Result<Self>
+    async fn retrieve_from_async_stream<R>(r: &mut R) -> Result<Self>
     where
         R: AsyncRead + Unpin + Send + ?Sized,
     {
@@ -70,7 +64,7 @@ impl AsyncStreamOperation for Request {
 
         if ver != Version::V5 {
             let err = format!("Unsupported SOCKS version {0:#x}", u8::from(ver));
-            return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, err));
+            return Err(Error::from(std::io::Error::new(std::io::ErrorKind::Unsupported, err)));
         }
 
         let mut buf = [0; 2];

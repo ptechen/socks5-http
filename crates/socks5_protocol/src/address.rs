@@ -1,14 +1,11 @@
-#[cfg(feature = "tokio")]
-use crate::protocol::AsyncStreamOperation;
-use crate::protocol::StreamOperation;
-#[cfg(feature = "tokio")]
-use async_trait::async_trait;
+use crate::AsyncStreamOperation;
+use crate::StreamOperation;
 use bytes::BufMut;
+use error::{Error, Result};
 use std::{
     io::Cursor,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
 };
-#[cfg(feature = "tokio")]
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
@@ -91,7 +88,7 @@ impl Address {
 }
 
 impl StreamOperation for Address {
-    fn retrieve_from_stream<R: std::io::Read>(stream: &mut R) -> std::io::Result<Self> {
+    fn retrieve_from_stream<R: std::io::Read>(stream: &mut R) -> Result<Self> {
         let mut atyp = [0; 1];
         stream.read_exact(&mut atyp)?;
         match AddressType::try_from(atyp[0])? {
@@ -116,7 +113,7 @@ impl StreamOperation for Address {
                     Ok(addr) => addr,
                     Err(err) => {
                         let err = format!("Invalid address encoding: {err}");
-                        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, err));
+                        return Err(Error::from(std::io::Error::new(std::io::ErrorKind::InvalidData, err)));
                     }
                 };
                 Ok(Self::DomainAddress(addr, port))
@@ -163,10 +160,11 @@ impl StreamOperation for Address {
     }
 }
 
-#[cfg(feature = "tokio")]
-#[async_trait]
-impl AsyncStreamOperation for Address {
-    async fn retrieve_from_async_stream<R>(stream: &mut R) -> std::io::Result<Self>
+impl AsyncStreamOperation for Address
+where
+    Self: Send,
+{
+    async fn retrieve_from_async_stream<R>(stream: &mut R) -> Result<Self>
     where
         R: AsyncRead + Unpin + Send + ?Sized,
     {
@@ -193,7 +191,7 @@ impl AsyncStreamOperation for Address {
                     Ok(addr) => addr,
                     Err(err) => {
                         let err = format!("Invalid address encoding: {err}");
-                        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, err));
+                        return Err(Error::from(std::io::Error::new(std::io::ErrorKind::InvalidData, err)));
                     }
                 };
                 Ok(Self::DomainAddress(addr, port))
@@ -267,18 +265,18 @@ impl From<Address> for Vec<u8> {
 }
 
 impl TryFrom<Vec<u8>> for Address {
-    type Error = std::io::Error;
+    type Error = Error;
 
-    fn try_from(data: Vec<u8>) -> std::result::Result<Self, Self::Error> {
+    fn try_from(data: Vec<u8>) -> Result<Self> {
         let mut rdr = Cursor::new(data);
         Self::retrieve_from_stream(&mut rdr)
     }
 }
 
 impl TryFrom<&[u8]> for Address {
-    type Error = std::io::Error;
+    type Error = Error;
 
-    fn try_from(data: &[u8]) -> std::result::Result<Self, Self::Error> {
+    fn try_from(data: &[u8]) -> Result<Self> {
         let mut rdr = Cursor::new(data);
         Self::retrieve_from_stream(&mut rdr)
     }
@@ -333,7 +331,7 @@ impl From<&Address> for Address {
 }
 
 impl TryFrom<&str> for Address {
-    type Error = crate::Error;
+    type Error = error::Error;
 
     fn try_from(addr: &str) -> std::result::Result<Self, Self::Error> {
         if let Ok(addr) = addr.parse::<SocketAddr>() {
@@ -374,7 +372,6 @@ fn test_address() {
     assert_eq!(addr, addr2);
 }
 
-#[cfg(feature = "tokio")]
 #[tokio::test]
 async fn test_address_async() {
     let addr = Address::from((Ipv4Addr::new(127, 0, 0, 1), 8080));

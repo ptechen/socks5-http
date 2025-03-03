@@ -29,7 +29,7 @@ Check [examples](https://github.com/ssrlive/socks5-impl/tree/master/examples) fo
 ## Example
 
 ```rust no_run
-use socks5_impl::protocol::{handshake, Address, AuthMethod, Reply, Request, Response, StreamOperation};
+use socks5_protocol::{handshake, Address, AuthMethod, Reply, Request, Response, StreamOperation};
 
 fn main() -> socks5_impl::Result<()> {
     let listener = std::net::TcpListener::bind("127.0.0.1:5000")?;
