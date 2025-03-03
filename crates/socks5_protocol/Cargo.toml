@@ -1,0 +1,10 @@
+[package]
+name = "socks5_protocol"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bytes.workspace = true
+tokio = {workspace = true }
+error.workspace = true
+percent-encoding.workspace = true

@@ -1,0 +1,10 @@
+[package]
+name = "http_impl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.85"
+tokio = "1.42.0"
+error.workspace = true
+socks5_protocol.workspace = true

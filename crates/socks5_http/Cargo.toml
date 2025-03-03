@@ -1,0 +1,11 @@
+[package]
+name = "socks5_http"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+error.workspace = true
+hyper = { workspace = true, features = ["full"]}
+hyper-util = { workspace = true, features = ["full"]}
+socks5_protocol.workspace = true
