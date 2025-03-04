@@ -1,6 +1,7 @@
 mod request;
 mod response;
 
+use serde::{Deserialize, Serialize};
 pub use self::{
     request::Request,
     response::{Response, Status},
@@ -9,7 +10,7 @@ pub use self::{
 pub const SUBNEGOTIATION_VERSION: u8 = 0x01;
 
 /// Required for a username + password authentication.
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Deserialize, Serialize)]
 #[derive(Default, Debug, Eq, PartialEq, Clone, Hash)]
 pub struct UserKey {
     pub username: String,

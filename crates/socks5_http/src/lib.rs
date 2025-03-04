@@ -21,7 +21,7 @@ impl Sock5Http {
 
     async fn socks5_or_http(&self) -> Result<Sock5OrHttp> {
         let mut ver = [0u8; 1];
-        self.sock5_or_http.inner().read(&mut ver)?;
+        self.sock5_or_http.inner().read_exact(&mut ver)?;
         let version = Version::try_from(ver[0])?;
         if version == Version::V5 {
             Ok(Sock5OrHttp::Sock5)
