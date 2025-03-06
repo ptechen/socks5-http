@@ -33,39 +33,30 @@ async fn main() -> Result<()> {
 
     let router_svc = Router::new().route("/", get(|| async { "Request Failed" }));
     let router_svc1 = router_svc.clone();
-    let router_svc2 = router_svc.clone();
-    let tower_service_basic_auth = tower::service_fn(move |req: Request<_>| {
+    let tower_service = move |remote_ip: String, is_white: bool| tower::service_fn(move |req: Request<_>| {
         let router_svc = router_svc1.clone();
         let req = req.map(Body::new);
+        let remote_ip = remote_ip.clone();
         async move {
             if req.method() == Method::CONNECT {
-                if let Err(response) = HttpProxy::basic_auth(&req) {
-                    return Ok(response)
+                if !is_white {
+                    if let Err(response) = HttpProxy::basic_auth(&req) {
+                        return Ok(response)
+                    }
                 }
-                HttpProxy::proxy(req).await
+                HttpProxy::proxy(req, &remote_ip).await
             } else {
-                if let Err(response) = HttpProxy::basic_auth(&req) {
-                    return Ok(response)
+                if !is_white {
+                    if let Err(response) = HttpProxy::basic_auth(&req) {
+                        return Ok(response)
+                    }
                 }
                 router_svc.oneshot(req).await.map_err(|err| match err {})
             }
         }
     });
 
-    let tower_service_no_auth = tower::service_fn(move |req: Request<_>| {
-        let router_svc = router_svc2.clone();
-        let req = req.map(Body::new);
-        async move {
-            if req.method() == Method::CONNECT {
-                HttpProxy::proxy(req).await
-            } else {
-                router_svc.oneshot(req).await.map_err(|err| match err {})
-            }
-        }
-    });
-
-    let hyper_service_basic_auth = hyper::service::service_fn(move |request: Request<Incoming>| tower_service_basic_auth.clone().call(request));
-    let hyper_service_no_auth = hyper::service::service_fn(move |request: Request<Incoming>| tower_service_no_auth.clone().call(request));
+    let hyper_service = move |remote_ip: String, is_white: bool| hyper::service::service_fn(move |request: Request<Incoming>| tower_service.clone()(remote_ip.clone(), is_white).clone().call(request));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
@@ -74,8 +65,9 @@ async fn main() -> Result<()> {
     'tag: loop {
         tokio::select! {
             Ok((stream, socket_addr)) = listener.accept() => {
+                let remote_ip = socket_addr.ip().to_string();
                 //todo is white
-                let mut is_white = false;
+                let is_white = true;
                 tracing::debug!("accepted connection from {}", socket_addr);
                 let socks5_or_http = SocksHttp::socks_or_http(&stream).await?;
                 match socks5_or_http {
@@ -89,33 +81,18 @@ async fn main() -> Result<()> {
                     SocksOrHttp::Http => {
                         tracing::debug!("not socks5 protocol: {:?}", stream.peer_addr());
                         let io = TokioIo::new(stream);
-                        if is_white {
-                            let hyper_service = hyper_service_no_auth.clone();
-                            tokio::task::spawn(async move {
+                        let hyper_service = hyper_service.clone()(remote_ip, is_white).clone();
+                        tokio::task::spawn(async move {
                             if let Err(err) = http1::Builder::new()
-                                .preserve_header_case(true)
-                                .title_case_headers(true)
-                                .serve_connection(io, hyper_service)
-                                .with_upgrades()
-                                .await
-                                {
-                                    tracing::error!("Failed to serve connection: {:?}", err);
-                                }
-                            });
-                        } else {
-                            let hyper_service = hyper_service_basic_auth.clone();
-                            tokio::task::spawn(async move {
-                                if let Err(err) = http1::Builder::new()
-                                    .preserve_header_case(true)
-                                    .title_case_headers(true)
-                                    .serve_connection(io, hyper_service)
-                                    .with_upgrades()
-                                    .await
-                                {
-                                    tracing::error!("Failed to serve connection: {:?}", err);
-                                }
-                            });
-                        }
+                            .preserve_header_case(true)
+                            .title_case_headers(true)
+                            .serve_connection(io, hyper_service)
+                            .with_upgrades()
+                            .await
+                            {
+                                tracing::error!("Failed to serve connection: {:?}", err);
+                            }
+                        });
                     }
                 }
             },
