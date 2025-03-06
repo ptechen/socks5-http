@@ -10,4 +10,4 @@ tokio = { workspace = true, features = ["full"] }
 error.workspace = true
 bytes.workspace = true
 async-trait.workspace = true
-serde = { workspace = true, features = ["derive"]}
+tracing.workspace = true

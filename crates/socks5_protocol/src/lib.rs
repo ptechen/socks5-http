@@ -10,8 +10,8 @@ pub use self::{
     address::{Address, AddressType},
     command::Command,
     handshake::{
-        password_method::{self, UserKey},
         AuthMethod,
+        password_method::{self, UserKey},
     },
     reply::Reply,
     request::Request,
@@ -88,7 +88,8 @@ pub trait AsyncStreamOperation: StreamOperation {
 
     fn write_to_async_stream<W>(&self, w: &mut W) -> impl Future<Output = Result<()>> + Send
     where
-        W: AsyncWrite + Unpin + Send + ?Sized, Self: Sync
+        W: AsyncWrite + Unpin + Send + ?Sized,
+        Self: Sync,
     {
         async move {
             let mut buf = bytes::BytesMut::with_capacity(self.len());

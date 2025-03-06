@@ -1,160 +1,146 @@
-// use {
-//     socks5_protocol::{Address, Reply, UdpHeader},
-//     server::{auth, connection::associate, AssociatedUdpSocket, ClientConnection, IncomingConnection, Server, UdpAssociate},
-//     Error, Result,
-// };
-// use std::{
-//     net::{SocketAddr, ToSocketAddrs},
-//     sync::{atomic::AtomicBool, Arc},
-// };
-// use tokio::{
-//     io,
-//     net::{TcpStream, UdpSocket},
-//     sync::Mutex,
-// };
-//
-// pub(crate) static MAX_UDP_RELAY_PACKET_SIZE: usize = 1500;
-//
-// #[tokio::main]
-// async fn main() -> Result<()> {
-//
-//
-//     Ok(())
-// }
-//
-// async fn main_loop(listen_addr: SocketAddr) -> Result<()>
-// {
-//     tokio::net::TcpListener::bind(listen_addr).await?.accept();
-//     let server = Server::bind(listen_addr, auth).await?;
-//
-//     while let Ok((conn, _)) = server.accept().await {
-//         if let Some(exiting_flag) = &exiting_flag {
-//             if exiting_flag.load(std::sync::atomic::Ordering::Relaxed) {
-//                 break;
-//             }
-//         }
-//         tokio::spawn(async move {
-//             if let Err(err) = handle(conn).await {
-//                 log::error!("{err}");
-//             }
-//         });
-//     }
-//     Ok(())
-// }
-//
-// async fn handle<S>(conn: IncomingConnection<S>) -> Result<()>
-// where
-//     S: Send + Sync + 'static,
-// {
-//     let (conn, res) = conn.authenticate().await?;
-//
-//     use as_any::AsAny;
-//     if let Some(res) = res.as_any().downcast_ref::<std::io::Result<bool>>() {
-//         let res = *res.as_ref().map_err(|err| err.to_string())?;
-//         if !res {
-//             log::info!("authentication failed");
-//             return Ok(());
-//         }
-//     }
-//
-//     match conn.wait_request().await? {
-//         ClientConnection::UdpAssociate(associate, _) => {
-//             handle_s5_upd_associate(associate).await?;
-//         }
-//         ClientConnection::Bind(bind, _) => {
-//             let mut conn = bind.reply(Reply::CommandNotSupported, Address::unspecified()).await?;
-//             conn.shutdown().await?;
-//         }
-//         ClientConnection::Connect(connect, addr) => {
-//             let target = match addr {
-//                 Address::DomainAddress(domain, port) => TcpStream::connect((domain, port)).await,
-//                 Address::SocketAddress(addr) => TcpStream::connect(addr).await,
-//             };
-//
-//             if let Ok(mut target) = target {
-//                 let mut conn = connect.reply(Reply::Succeeded, Address::unspecified()).await?;
-//                 log::trace!("{} -> {}", conn.peer_addr()?, target.peer_addr()?);
-//                 io::copy_bidirectional(&mut target, &mut conn).await?;
-//             } else {
-//                 let mut conn = connect.reply(Reply::HostUnreachable, Address::unspecified()).await?;
-//                 conn.shutdown().await?;
-//             }
-//         }
-//     }
-//
-//     Ok(())
-// }
-//
-// pub(crate) async fn handle_s5_upd_associate(associate: UdpAssociate<associate::NeedReply>) -> Result<()> {
-//     // listen on a random port
-//     let listen_ip = associate.local_addr()?.ip();
-//     let udp_listener = UdpSocket::bind(SocketAddr::from((listen_ip, 0))).await;
-//
-//     match udp_listener.and_then(|socket| socket.local_addr().map(|addr| (socket, addr))) {
-//         Err(err) => {
-//             let mut conn = associate.reply(Reply::GeneralFailure, Address::unspecified()).await?;
-//             conn.shutdown().await?;
-//             Err(err.into())
-//         }
-//         Ok((listen_udp, listen_addr)) => {
-//             log::info!("[UDP] {listen_addr} listen on");
-//
-//             let s5_listen_addr = Address::from(listen_addr);
-//             let mut reply_listener = associate.reply(Reply::Succeeded, s5_listen_addr).await?;
-//
-//             let buf_size = MAX_UDP_RELAY_PACKET_SIZE - UdpHeader::max_serialized_len();
-//             let listen_udp = Arc::new(AssociatedUdpSocket::from((listen_udp, buf_size)));
-//
-//             let zero_addr = SocketAddr::from(([0, 0, 0, 0], 0));
-//
-//             let incoming_addr = Arc::new(Mutex::new(zero_addr));
-//
-//             let dispatch_socket = UdpSocket::bind(zero_addr).await?;
-//
-//             let res = loop {
-//                 tokio::select! {
-//                     res = async {
-//                         let buf_size = MAX_UDP_RELAY_PACKET_SIZE - UdpHeader::max_serialized_len();
-//                         listen_udp.set_max_packet_size(buf_size);
-//
-//                         let (pkt, frag, dst_addr, src_addr) = listen_udp.recv_from().await?;
-//                         if frag != 0 {
-//                             return Err("[UDP] packet fragment is not supported".into());
-//                         }
-//
-//                         *incoming_addr.lock().await = src_addr;
-//
-//                         log::trace!("[UDP] {src_addr} -> {dst_addr} incoming packet size {}", pkt.len());
-//                         let dst_addr = dst_addr.to_socket_addrs()?.next().ok_or("Invalid address")?;
-//                         dispatch_socket.send_to(&pkt, dst_addr).await?;
-//                         Ok::<_, Error>(())
-//                     } => {
-//                         if res.is_err() {
-//                             break res;
-//                         }
-//                     },
-//                     res = async {
-//                         let mut buf = vec![0u8; MAX_UDP_RELAY_PACKET_SIZE];
-//                         let (len, remote_addr) = dispatch_socket.recv_from(&mut buf).await?;
-//                         let incoming_addr = *incoming_addr.lock().await;
-//                         log::trace!("[UDP] {incoming_addr} <- {remote_addr} feedback to incoming");
-//                         listen_udp.send_to(&buf[..len], 0, remote_addr.into(), incoming_addr).await?;
-//                         Ok::<_, Error>(())
-//                     } => {
-//                         if res.is_err() {
-//                             break res;
-//                         }
-//                     },
-//                     _ = reply_listener.wait_until_closed() => {
-//                         log::trace!("[UDP] {} listener closed", listen_addr);
-//                         break Ok::<_, Error>(());
-//                     },
-//                 };
-//             };
-//
-//             reply_listener.shutdown().await?;
-//
-//             res
-//         }
-//     }
-// }
+use axum::Router;
+use axum::body::Body;
+use axum::extract::Request;
+use axum::http::Method;
+use axum::routing::get;
+use error::Result;
+use http_impl::proxy::HttpProxy;
+use hyper::body::Incoming;
+use hyper::server::conn::http1;
+use hyper_util::rt::TokioIo;
+use socks5_server::auth::NoAuth;
+use socks5_server::handle_stream::handle_stream;
+use std::{net::SocketAddr, sync::Arc};
+use tokio::net::TcpListener;
+use tokio::signal;
+use tower::{Service, ServiceExt};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use socks5_http::{Sock5Http, Sock5OrHttp};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| format!("{}=trace,tower_http=debug", env!("CARGO_CRATE_NAME")).into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    let router_svc = Router::new().route("/", get(|| async { "Hello, World!" }));
+    let router_svc1 = router_svc.clone();
+    let router_svc2 = router_svc.clone();
+    let tower_service = tower::service_fn(move |req: Request<_>| {
+        let router_svc = router_svc1.clone();
+        let req = req.map(Body::new);
+        async move {
+            if req.method() == Method::CONNECT {
+                if let Err(response) = HttpProxy::basic_auth(&req) {
+                    return Ok(response);
+                }
+                HttpProxy::proxy(req).await
+            } else {
+                if let Err(response) = HttpProxy::basic_auth(&req) {
+                    return Ok(response);
+                }
+                router_svc.oneshot(req).await.map_err(|err| match err {})
+            }
+        }
+    });
+
+    let tower_service_no_auth = tower::service_fn(move |req: Request<_>| {
+        let router_svc = router_svc2.clone();
+        let req = req.map(Body::new);
+        async move {
+            if req.method() == Method::CONNECT {
+                HttpProxy::proxy(req).await
+            } else {
+                router_svc.oneshot(req).await.map_err(|err| match err {})
+            }
+        }
+    });
+
+    let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| tower_service.clone().call(request));
+    let hyper_service_no_auth = hyper::service::service_fn(move |request: Request<Incoming>| tower_service_no_auth.clone().call(request));
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    tracing::debug!("listening on {}", addr);
+
+    let listener = TcpListener::bind(addr).await?;
+    'tag: loop {
+        tokio::select! {
+            Ok((stream, socket_addr)) = listener.accept() => {
+                let mut is_white = false;
+                tracing::debug!("accepted connection from {}", socket_addr);
+                let socks5_or_http = Sock5Http::socks5_or_http(&stream).await?;
+                match socks5_or_http {
+                    Sock5OrHttp::Sock5 => {
+                        let auth = NoAuth;
+                        let auth = Arc::new(auth);
+                        if let Err(err) = handle_stream(stream, auth).await {
+                            tracing::error!("{}", err);
+                        }
+                    }
+                    Sock5OrHttp::Http => {
+                        tracing::debug!("not socks5 protocol: {:?}", stream.peer_addr());
+                        let io = TokioIo::new(stream);
+                        if is_white {
+                            let hyper_service = hyper_service_no_auth.clone();
+                            tokio::task::spawn(async move {
+                            if let Err(err) = http1::Builder::new()
+                                .preserve_header_case(true)
+                                .title_case_headers(true)
+                                .serve_connection(io, hyper_service)
+                                .with_upgrades()
+                                .await
+                                {
+                                    tracing::error!("Failed to serve connection: {:?}", err);
+                                }
+                            });
+                        } else {
+                            let hyper_service = hyper_service.clone();
+                            tokio::task::spawn(async move {
+                                if let Err(err) = http1::Builder::new()
+                                    .preserve_header_case(true)
+                                    .title_case_headers(true)
+                                    .serve_connection(io, hyper_service)
+                                    .with_upgrades()
+                                    .await
+                                {
+                                    tracing::error!("Failed to serve connection: {:?}", err);
+                                }
+                            });
+                        }
+                    }
+                }
+            },
+            _ = shutdown_signal() => {
+                break 'tag;
+            },
+        }
+    }
+    Ok(())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+}

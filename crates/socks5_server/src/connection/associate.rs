@@ -1,5 +1,5 @@
-use socks5_protocol::{Address, AsyncStreamOperation, Reply, Response, StreamOperation, UdpHeader};
 use bytes::{Bytes, BytesMut};
+use socks5_protocol::{Address, AsyncStreamOperation, Reply, Response, StreamOperation, UdpHeader};
 use std::{
     net::SocketAddr,
     pin::Pin,

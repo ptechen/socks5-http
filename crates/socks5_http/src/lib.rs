@@ -1,11 +1,8 @@
 use error::Result;
 use hyper_util::rt::TokioIo;
+use tokio::net::TcpStream;
 use socks5_protocol::Version;
-use std::io::Read;
-use std::net::TcpStream;
-pub struct Sock5Http {
-    pub sock5_or_http: TokioIo<TcpStream>,
-}
+pub struct Sock5Http;
 
 pub enum Sock5OrHttp {
     Sock5,
@@ -13,20 +10,21 @@ pub enum Sock5OrHttp {
 }
 
 impl Sock5Http {
-    pub fn new(sock5_or_http: TcpStream) -> Self {
-        Self {
-            sock5_or_http: TokioIo::new(sock5_or_http),
-        }
-    }
-
-    async fn socks5_or_http(&self) -> Result<Sock5OrHttp> {
+    pub async fn socks5_or_http(stream: &TcpStream) -> Result<Sock5OrHttp> {
         let mut ver = [0u8; 1];
-        self.sock5_or_http.inner().read_exact(&mut ver)?;
-        let version = Version::try_from(ver[0])?;
-        if version == Version::V5 {
-            Ok(Sock5OrHttp::Sock5)
-        } else {
-            Ok(Sock5OrHttp::Http)
-        }
+        stream.peek(&mut ver).await?;
+        let socks5_or_http = match Version::try_from(ver[0]) {
+            Ok(version) => {
+                if version == Version::V5 {
+                    Sock5OrHttp::Sock5
+                } else {
+                    Sock5OrHttp::Http
+                }
+            },
+            Err(_) => {
+                Sock5OrHttp::Http
+            }
+        };
+        Ok(socks5_or_http)
     }
 }

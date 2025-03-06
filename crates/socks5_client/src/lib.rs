@@ -19,7 +19,7 @@ pub trait Socks5Reader: AsyncReadExt + Unpin
 where
     Self: Send,
 {
-    fn read_version(&mut self) -> impl Future<Output = Result<()>> + Send  {
+    fn read_version(&mut self) -> impl Future<Output = Result<()>> + Send {
         async move {
             let value = Version::try_from(self.read_u8().await?)?;
             match value {
@@ -74,7 +74,7 @@ where
         }
     }
 
-    fn read_reply(&mut self) -> impl Future<Output = Result<()>> + Send{
+    fn read_reply(&mut self) -> impl Future<Output = Result<()>> + Send {
         async move {
             let value = self.read_u8().await?;
             match Reply::try_from(value)? {
@@ -177,22 +177,21 @@ where
         }
     }
 
-    fn write_fragment_id(&mut self, id: u8) -> impl Future<Output = Result<()>> + Send  {
+    fn write_fragment_id(&mut self, id: u8) -> impl Future<Output = Result<()>> + Send {
         async move {
             self.write_u8(id).await?;
             Ok(())
         }
     }
 
-    fn write_address(&mut self, address: &Address) -> impl Future<Output = Result<()>> + Send
-    {
+    fn write_address(&mut self, address: &Address) -> impl Future<Output = Result<()>> + Send {
         async {
             address.write_to_async_stream(self).await?;
             Ok(())
         }
     }
 
-    fn write_string(&mut self, string: &str) -> impl Future<Output = Result<()>> + Send{
+    fn write_string(&mut self, string: &str) -> impl Future<Output = Result<()>> + Send {
         async move {
             let bytes = string.as_bytes();
             if bytes.len() > 255 {
@@ -541,9 +540,9 @@ impl UdpClientImpl<SocksUdpClient> {
 mod tests {
     use {
         crate::{SocksListener, SocksUdpClient, UdpClientTrait},
+        Result,
         error::Error,
         socks5_protocol::{Address, UserKey},
-        Result,
     };
 
     use crate::UdpClientTrait;

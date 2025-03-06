@@ -6,14 +6,16 @@ use tokio::net::TcpListener;
 
 pub mod auth;
 pub mod connection;
+pub mod handle_stream;
 mod server_auth;
 
-pub use crate::{auth::{AuthAdaptor, AuthExecutor},
-                connection::{
+pub use crate::{
+    auth::{AuthAdaptor, AuthExecutor},
+    connection::{
+        ClientConnection, IncomingConnection,
         associate::{AssociatedUdpSocket, UdpAssociate},
         bind::Bind,
         connect::Connect,
-        ClientConnection, IncomingConnection,
     },
 };
 

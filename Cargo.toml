@@ -25,63 +25,12 @@ tower = "0.5.2"
 hyper-util = "0.1.10"
 tracing-subscriber = "0.3.19"
 tracing = "0.1.41"
+base64 = "0.22.1"
 error = { path = "crates/error" }
 socks5_protocol = { path = "crates/socks5_protocol"}
 http_impl = { path = "crates/http_impl" }
 socks5_client = { path = "crates/socks5_client" }
-
-#[dependencies]
-#as-any = "0.3"
-#async-trait = "0.1"
-#byteorder = "1"
-#bytes = "1"
-#percent-encoding = "2"
-#serde = { version = "1", features = ["derive"], optional = true }
-#thiserror = "2"
-#tokio = { version = "1", default-features = false, features = [
-#    "net",
-#    "io-util",
-#    "time",
-#    "macros",
-#    "rt",
-#], optional = true }
-#axum = "0.8.1"
-#http = "1.2.0"
-#hyper = "1.5.2"
-#tower = "0.5.2"
-#hyper-util = "0.1.10"
-#tracing-subscriber = "0.3.19"
-#tracing = "0.1.41"
-
-#[dev-dependencies]
-#clap = { version = "4", features = ["derive"] }
-#ctrlc2 = { version = "3", features = ["tokio", "termination"] }
-#dotenvy = "0.15"
-#env_logger = "0.11"
-#hickory-proto = "0.24"
-#log = "0.4"
-#moka = { version = "0.12", features = ["future"] }
-#rand = "0.9"
-#tokio = { version = "1", features = ["rt-multi-thread"] }
-#error.workspace = true
-#
-#[[example]]
-#name = "demo-client"
-#path = "examples/demo-client.rs"
-
-#
-#[[example]]
-#name = "demo-server"
-#path = "examples/demo-server.rs"
-#
-#[[example]]
-#name = "dns-query"
-#path = "examples/dns-query.rs"
-#
-#[[example]]
-#name = "s5-server"
-#path = "examples/s5-server.rs"
-#
-#[[example]]
-#name = "udp-client"
-#path = "examples/udp-client.rs"
+socks5_server = { path = "crates/socks5_server" }
+serde_json = "1.0.140"
+fn_macro = "0.1.4"
+socks5_http = { path = "crates/socks5_http" }

@@ -1,10 +1,10 @@
-use socks5_protocol::{handshake::password_method, AsyncStreamOperation, AuthMethod, UserKey};
 use as_any::AsAny;
-use std::sync::Arc;
 use async_trait::async_trait;
-use tokio::net::TcpStream;
-use password_method::{Request, Response, Status::*};
 use error::{Error, Result};
+use password_method::{Request, Response, Status::*};
+use socks5_protocol::{AsyncStreamOperation, AuthMethod, UserKey, handshake::password_method};
+use std::sync::Arc;
+use tokio::net::TcpStream;
 
 /// This trait is for defining the socks5 authentication method.
 ///
@@ -57,9 +57,7 @@ impl AuthExecutor for NoAuth {
         AuthMethod::NoAuth
     }
 
-    async fn execute(&self, _: &mut TcpStream) -> Self::Output {
-
-    }
+    async fn execute(&self, _: &mut TcpStream) -> Self::Output {}
 }
 
 /// Username and password as the socks5 handshake method.
@@ -90,7 +88,10 @@ impl AuthExecutor for UserKeyAuth {
         if is_equal {
             Ok(true)
         } else {
-            Err(Error::from(std::io::Error::new(std::io::ErrorKind::Other, "username or password is incorrect")))
+            Err(Error::from(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "username or password is incorrect",
+            )))
         }
     }
 }

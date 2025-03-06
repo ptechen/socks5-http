@@ -1,9 +1,9 @@
 use self::{associate::UdpAssociate, bind::Bind, connect::Connect};
-use socks5_protocol::{self, handshake, Address, AsyncStreamOperation, AuthMethod, Command};
+use crate::AuthAdaptor;
+use error::Result;
+use socks5_protocol::{self, Address, AsyncStreamOperation, AuthMethod, Command, handshake};
 use std::{net::SocketAddr, time::Duration};
 use tokio::{io::AsyncWriteExt, net::TcpStream};
-use error::Result;
-use crate::AuthAdaptor;
 
 pub mod associate;
 pub mod bind;
@@ -18,7 +18,7 @@ pub struct IncomingConnection<O> {
 
 impl<O: 'static> IncomingConnection<O> {
     #[inline]
-    pub(crate) fn new(stream: TcpStream, auth: AuthAdaptor<O>) -> Self {
+    pub fn new(stream: TcpStream, auth: AuthAdaptor<O>) -> Self {
         IncomingConnection { stream, auth }
     }
 
@@ -118,11 +118,7 @@ impl<O: 'static> IncomingConnection<O> {
 
     fn evaluate_request(&self, req: &handshake::Request) -> Option<AuthMethod> {
         let method = self.auth.auth_method();
-        if req.evaluate_method(method) {
-            Some(method)
-        } else {
-            None
-        }
+        if req.evaluate_method(method) { Some(method) } else { None }
     }
 }
 

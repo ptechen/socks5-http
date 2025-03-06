@@ -4,5 +4,14 @@ version = "0.1.0"
 edition.workspace = true
 
 [dependencies]
-socks5_protocol.workspace = true
 tokio = { workspace = true, features = ["full"] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+socks5_server.workspace = true
+error.workspace = true
+axum.workspace = true
+tower.workspace = true
+http_impl.workspace = true
+hyper = { workspace = true, features = ["full"] }
+hyper-util.workspace = true
+socks5_http.workspace = true
