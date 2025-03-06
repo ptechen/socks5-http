@@ -1,5 +1,4 @@
 use error::Result;
-use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 use socks5_protocol::Version;
 pub struct SocksHttp;

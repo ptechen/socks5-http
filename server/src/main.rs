@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
     let router_svc = Router::new().route("/", get(|| async { "Request Failed" }));
     let router_svc1 = router_svc.clone();
     let router_svc2 = router_svc.clone();
-    let tower_service = tower::service_fn(move |req: Request<_>| {
+    let tower_service_basic_auth = tower::service_fn(move |req: Request<_>| {
         let router_svc = router_svc1.clone();
         let req = req.map(Body::new);
         async move {
@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| tower_service.clone().call(request));
+    let hyper_service_basic_auth = hyper::service::service_fn(move |request: Request<Incoming>| tower_service_basic_auth.clone().call(request));
     let hyper_service_no_auth = hyper::service::service_fn(move |request: Request<Incoming>| tower_service_no_auth.clone().call(request));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -103,7 +103,7 @@ async fn main() -> Result<()> {
                                 }
                             });
                         } else {
-                            let hyper_service = hyper_service.clone();
+                            let hyper_service = hyper_service_basic_auth.clone();
                             tokio::task::spawn(async move {
                                 if let Err(err) = http1::Builder::new()
                                     .preserve_header_case(true)
