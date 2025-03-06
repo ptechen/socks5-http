@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let router_svc = Router::new().route("/", get(|| async { "Hello, World!" }));
+    let router_svc = Router::new().route("/", get(|| async { "Request Failed" }));
     let router_svc1 = router_svc.clone();
     let router_svc2 = router_svc.clone();
     let tower_service = tower::service_fn(move |req: Request<_>| {
@@ -37,12 +37,12 @@ async fn main() -> Result<()> {
         async move {
             if req.method() == Method::CONNECT {
                 if let Err(response) = HttpProxy::basic_auth(&req) {
-                    return Ok(response);
+                    return Ok(response)
                 }
                 HttpProxy::proxy(req).await
             } else {
                 if let Err(response) = HttpProxy::basic_auth(&req) {
-                    return Ok(response);
+                    return Ok(response)
                 }
                 router_svc.oneshot(req).await.map_err(|err| match err {})
             }
