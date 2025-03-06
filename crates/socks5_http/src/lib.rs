@@ -2,27 +2,27 @@ use error::Result;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 use socks5_protocol::Version;
-pub struct Sock5Http;
+pub struct SocksHttp;
 
-pub enum Sock5OrHttp {
+pub enum SocksOrHttp {
     Socks,
     Http,
 }
 
-impl Sock5Http {
-    pub async fn socks5_or_http(stream: &TcpStream) -> Result<Sock5OrHttp> {
+impl SocksHttp {
+    pub async fn socks_or_http(stream: &TcpStream) -> Result<SocksOrHttp> {
         let mut ver = [0u8; 1];
         stream.peek(&mut ver).await?;
         let socks5_or_http = match Version::try_from(ver[0]) {
             Ok(version) => {
                 if version == Version::V5 || version == Version::V4 {
-                    Sock5OrHttp::Socks
+                    SocksOrHttp::Socks
                 } else {
-                    Sock5OrHttp::Http
+                    SocksOrHttp::Http
                 }
             },
             Err(_) => {
-                Sock5OrHttp::Http
+                SocksOrHttp::Http
             }
         };
         Ok(socks5_or_http)

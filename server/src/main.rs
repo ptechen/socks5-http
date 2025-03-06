@@ -16,7 +16,7 @@ use tokio::signal;
 use tower::{Service, ServiceExt};
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
-use socks5_http::{Sock5Http, Sock5OrHttp};
+use socks5_http::{SocksHttp, SocksOrHttp};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -77,16 +77,16 @@ async fn main() -> Result<()> {
                 //todo is white
                 let mut is_white = false;
                 tracing::debug!("accepted connection from {}", socket_addr);
-                let socks5_or_http = Sock5Http::socks5_or_http(&stream).await?;
+                let socks5_or_http = SocksHttp::socks_or_http(&stream).await?;
                 match socks5_or_http {
-                    Sock5OrHttp::Socks => {
+                    SocksOrHttp::Socks => {
                         let auth = NoAuth;
                         let auth = Arc::new(auth);
                         if let Err(err) = handle_stream(stream, auth).await {
                             tracing::error!("{}", err);
                         }
                     }
-                    Sock5OrHttp::Http => {
+                    SocksOrHttp::Http => {
                         tracing::debug!("not socks5 protocol: {:?}", stream.peer_addr());
                         let io = TokioIo::new(stream);
                         if is_white {
