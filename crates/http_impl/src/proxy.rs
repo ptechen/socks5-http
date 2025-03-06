@@ -52,15 +52,15 @@ impl HttpProxy {
                         if let Ok(decoded) = String::from_utf8(decoded) {
                             if let Some((username, password)) = decoded.split_once(':') {
                                 info!("username: {}, password: {}", username, password);
-                                if username == USERNAME && password == PASSWORD {
-                                    return Ok(());
+                                return if username == USERNAME && password == PASSWORD {
+                                    Ok(())
                                 } else {
                                     let response = Response::builder()
                                         .status(StatusCode::UNAUTHORIZED)
                                         .header(header::WWW_AUTHENTICATE, r#"Basic realm="proxy""#)
                                         .body(Body::from("Unauthorized"))
                                         .unwrap();
-                                    return Err(response);
+                                    Err(response)
                                 }
                             }
                         }
