@@ -5,7 +5,7 @@ use socks5_protocol::Version;
 pub struct Sock5Http;
 
 pub enum Sock5OrHttp {
-    Sock5,
+    Socks,
     Http,
 }
 
@@ -15,8 +15,8 @@ impl Sock5Http {
         stream.peek(&mut ver).await?;
         let socks5_or_http = match Version::try_from(ver[0]) {
             Ok(version) => {
-                if version == Version::V5 {
-                    Sock5OrHttp::Sock5
+                if version == Version::V5 || version == Version::V4 {
+                    Sock5OrHttp::Socks
                 } else {
                     Sock5OrHttp::Http
                 }

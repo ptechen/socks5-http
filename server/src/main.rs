@@ -74,11 +74,12 @@ async fn main() -> Result<()> {
     'tag: loop {
         tokio::select! {
             Ok((stream, socket_addr)) = listener.accept() => {
+                //todo is white
                 let mut is_white = false;
                 tracing::debug!("accepted connection from {}", socket_addr);
                 let socks5_or_http = Sock5Http::socks5_or_http(&stream).await?;
                 match socks5_or_http {
-                    Sock5OrHttp::Sock5 => {
+                    Sock5OrHttp::Socks => {
                         let auth = NoAuth;
                         let auth = Arc::new(auth);
                         if let Err(err) = handle_stream(stream, auth).await {
