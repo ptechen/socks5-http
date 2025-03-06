@@ -11,7 +11,7 @@ use tracing::info;
 pub struct HttpProxy;
 
 impl HttpProxy {
-    pub async fn proxy(req: Request, remote_ip: &str) -> Result<Response, hyper::Error> {
+    pub async fn proxy(req: Request, _remote_ip: &str) -> Result<Response, hyper::Error> {
         if let Some(host_addr) = req.uri().authority().map(|auth| auth.to_string()) {
             tokio::task::spawn(async move {
                 match hyper::upgrade::on(req).await {

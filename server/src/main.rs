@@ -11,9 +11,11 @@ use hyper_util::rt::TokioIo;
 use socks5_server::auth::NoAuth;
 use socks5_server::handle_stream::handle_stream;
 use std::{net::SocketAddr, sync::Arc};
-use tokio::net::TcpListener;
+use hyper::{Error, Response};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::signal;
 use tower::{Service, ServiceExt};
+use tower::util::ServiceFn;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 use socks5_http::{SocksHttp, SocksOrHttp};
@@ -81,7 +83,7 @@ async fn main() -> Result<()> {
                     SocksOrHttp::Http => {
                         tracing::debug!("not socks5 protocol: {:?}", stream.peer_addr());
                         let io = TokioIo::new(stream);
-                        let hyper_service = hyper_service.clone()(remote_ip, is_white).clone();
+                        let hyper_service = hyper_service.clone()(remote_ip, is_white);
                         tokio::task::spawn(async move {
                             if let Err(err) = http1::Builder::new()
                             .preserve_header_case(true)
