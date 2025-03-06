@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
+tracing-subscriber = { workspace = true }
 socks5_server.workspace = true
 error.workspace = true
 axum.workspace = true

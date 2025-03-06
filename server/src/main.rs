@@ -14,19 +14,22 @@ use std::{net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
 use tokio::signal;
 use tower::{Service, ServiceExt};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
+use tracing::Level;
+use tracing_subscriber::FmtSubscriber;
 use socks5_http::{Sock5Http, Sock5OrHttp};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=trace,tower_http=debug", env!("CARGO_CRATE_NAME")).into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // a builder for `FmtSubscriber`.
+    let subscriber = FmtSubscriber::builder()
+        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::TRACE)
+        // completes the builder.
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("setting default subscriber failed");
 
     let router_svc = Router::new().route("/", get(|| async { "Request Failed" }));
     let router_svc1 = router_svc.clone();
